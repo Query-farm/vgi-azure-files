@@ -6,7 +6,7 @@
 //   SELECT * FROM files.drive_items(drive := '<driveId>') WHERE _row_kind IS NULL;
 //   -- incremental (replay the persisted verbatim @odata.deltaLink for that drive):
 //   SELECT * FROM files.drive_items(drive := '<driveId>', delta_token := '<link>');
-//   SELECT * FROM files.list_items(site := '<siteId>', list := '<listId>');
+//   SELECT * FROM files.sharepoint_list_items(site := '<siteId>', list := '<listId>');
 // The caller holds the {resourceId -> deltaLink} MAP and feeds one token per call.
 
 import { Worker, ReadOnlyCatalogInterface, FunctionRegistry } from "@query-farm/vgi";

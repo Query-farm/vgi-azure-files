@@ -1,5 +1,5 @@
 // Arrow output schema + row->batch mapping for the content delta functions.
-// Both drive_items and list_items share ONE column set (id + change cols + a handful
+// Both drive_items and sharepoint_list_items share ONE column set (id + change cols + a handful
 // of business fields), so the schema is data, not duplicated code.
 //
 // SECURITY (SPEC §4a): the `_download_url` column is GATED. It is omitted from the

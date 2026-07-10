@@ -19,7 +19,7 @@ test("both content functions register and the azure catalog advertises them", ()
   expect(cat.secretTypes?.[0]).toBe(AZURE_GRAPH_SECRET);
   expect(cat.schemas[0]!.functions!.map((f) => (f as { meta: { name: string } }).meta.name).sort()).toEqual([
     "drive_items",
-    "list_items",
+    "sharepoint_list_items",
   ]);
 
   // Constructs the read-only catalog interface without throwing.

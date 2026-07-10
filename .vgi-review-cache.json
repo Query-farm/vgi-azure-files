@@ -1,0 +1,82 @@
+{
+  "ed1445ef52eeec52": {
+    "object": "azure",
+    "kind": "catalog",
+    "scores": {
+      "accuracy": 4,
+      "clarity": 5,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "doc_md says the catalog is \"exposed as two DuckDB table functions\" but the catalog also exposes the `content_collections` view; add a third bullet for it and point agents there as the credential-free entry point, since it is the only object queryable without an `azure_graph` secret.",
+      "The comment pins v1 at \"Sites.Selected (opt-in Sites.Read.All for fleet scans)\" while doc_llm lists \"Sites.Selected, Sites.Read.All, or Files.Read.All\" \u2014 reconcile these, and state which permission each function needs (Files.Read.All is a OneDrive/`drive_items` concern, not a SharePoint list one).",
+      "Neither doc mentions deltaLink expiry. Graph returns 410 Gone / `resyncRequired` on a stale or too-old token; document what the function does in that case (throw? silently full-resync?) because an agent holding a `{resourceId -> deltaLink}` map must know whether to catch-and-reset."
+    ],
+    "summary": "Strong framing of the multi-cursor delta model, but it undercounts its own surface and leaves cursor-expiry behavior undefined."
+  },
+  "9ad59f7d08b12577": {
+    "object": "azure.main",
+    "kind": "schema",
+    "scores": {
+      "accuracy": 3,
+      "clarity": 5,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "doc_llm claims \"the $select / $expand / $top projection is pinned for the life of a token,\" but per `src/functions.ts` these apply only to the initial-sync URL and `page_size` ($top) is explicitly best-effort \u2014 describing $top as \"pinned\" is misleading. Say instead: $select/$expand are baked into the server's deltaLink and cannot be changed without a full resync; $top is a per-request hint Graph may ignore.",
+      "Add the shared output contract once here rather than leaving it implicit: both functions return the business columns `id, change_type, removed_reason, name, size, web_url, last_modified_date_time` plus control columns `_row_kind` / `_delta_next` last, and the marker row has ALL business columns NULL. `removed_reason` is documented nowhere in any object under review.",
+      "State that exactly one marker row is emitted per scan and that it is always emitted (even when zero items changed), so an agent can unconditionally read `_delta_next` and knows an empty incremental scan is a 1-row, not 0-row, result."
+    ],
+    "summary": "Clear and well-shaped, but overstates $top as pinned and omits the shared column contract including `removed_reason`."
+  },
+  "0f34d01e8f14802f": {
+    "object": "azure.main.content_collections",
+    "kind": "view",
+    "scores": {
+      "accuracy": 5,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "The `collection` slug values (`drive_items` / `list_items`) do not both match the `table_function` values (`drive_items` / `sharepoint_list_items`). Call this out in the `collection` column comment so an agent doesn't build a function name by string-templating the slug.",
+      "For a discovery view whose whole purpose is routing an agent to the right call, add a `required_parameters` column (e.g. `drive` vs `site,list`) \u2014 otherwise the agent must leave this view and read each function's signature to learn that one takes a single id and the other takes two.",
+      "The examples only project columns; add one that closes the loop, e.g. a comment showing the discovered `table_function` value being called: `-- SELECT table_function FROM ... WHERE collection='drive_items'; then: SELECT * FROM azure.main.drive_items('<driveId>') WHERE _row_kind IS NULL`."
+    ],
+    "summary": "Accurate and appropriately scoped as a credential-free index, but stops one column short of actually routing an agent to a callable invocation."
+  },
+  "f8b5d901a6d55b59": {
+    "object": "azure.main.sharepoint_list_items",
+    "kind": "table_function",
+    "scores": {
+      "accuracy": 4,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 4
+    },
+    "suggestions": [
+      "The `expand` parameter description omits the pinning caveat that the sibling `drive_items.select` description carries. Since `$expand` is baked into the returned deltaLink, changing `expand` on a subsequent call while passing an old `delta_token` silently has no effect \u2014 state this explicitly, as it is a real footgun for an agent tuning the projection.",
+      "Example 1 selects `web_url` and `last_modified_date_time`, and the schema also emits `size` and `removed_reason`, yet the prose describes none of these for listItems. Document that listItems share the `driveItems` column set, that `size` is always NULL for list items (they are metadata, not bytes), and that `removed_reason` is populated only on `change_type = 'removed'` rows.",
+      "doc_llm says \"the item Title surfaces as the `name` column\" \u2014 true only under the default `expand := 'fields'`. Note that overriding `expand` to anything not including `fields` yields NULL `name`, so an agent that customizes the projection knows it is trading away that mapping."
+    ],
+    "summary": "Cursor semantics are documented well; the column set, the always-NULL `size`, `removed_reason`, and `expand`'s pinning are all missing."
+  },
+  "7988326978594de7": {
+    "object": "azure.main.drive_items",
+    "kind": "table_function",
+    "scores": {
+      "accuracy": 2,
+      "clarity": 4,
+      "completeness": 3,
+      "audience_fit": 3
+    },
+    "suggestions": [
+      "The documented `parameters` order is wrong. It lists drive, delta_token, include_download_url, page_size, select, but `parameter_types` is [VARCHAR, VARCHAR, VARCHAR, BIGINT, BOOLEAN] and `src/functions.ts:72` declares the true order as `drive, delta_token, select, page_size, include_download_url`. An agent that trusts the prose and calls positionally will pass a boolean into `select`. Fix the docs to match the registration order (or state that these are named-only parameters).",
+      "doc_llm lists \"Columns: name, size, web_url, last_modified_date_time\" \u2014 this omits `id` (present in every example), `change_type`, and `removed_reason` entirely, and gives no types or units. Say `size` is BIGINT bytes and NULL for folders/tombstones, and give the format of `last_modified_date_time`.",
+      "`_download_url` is called \"short-lived\" three times with no duration. State the actual TTL (Graph pre-authed URLs are ~1 hour) and pair the existing SECURITY warning with the concrete consequence: the URL grants unauthenticated read of the file's bytes to any bearer of the string, so it must not be persisted alongside the delta cursor."
+    ],
+    "summary": "Documented parameter order contradicts both `parameter_types` and the source, making positional calls actively unsafe; column and TTL details are also thin."
+  }
+}

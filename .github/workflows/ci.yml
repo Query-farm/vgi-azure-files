@@ -13,5 +13,30 @@ permissions:
   contents: read
 
 jobs:
+  # Install, own-source typecheck, and bun unit tests (shared reusable workflow).
   ci:
     uses: Query-farm/vgi-actions/.github/workflows/ts-ci.yml@main
+
+  # Metadata-quality gate (vgi-lint): scores the worker's catalog/schema/function docs,
+  # tags, categories, per-arg docs, result schemas, and examples, and fails on any finding
+  # at info or above. execute:false keeps it deterministic and credential-free — both
+  # drive_items and sharepoint_list_items require a live app-only `azure_graph` secret (Microsoft
+  # Entra client credentials) and a network call to Microsoft Graph to return rows, so the
+  # VGI9xx live-scan rules (VGI911 scan-responds, VGI901 example execution) and the VGI920
+  # agent simulation cannot run without tenant credentials. The LIMIT-0 executable examples
+  # and the structured result schemas cover the static surface. The action tag @v1 resolves
+  # the latest published vgi-lint-check (unpinned).
+  lint:
+    name: metadata quality (vgi-lint)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - name: Install worker dependencies
+        run: bun install --frozen-lockfile
+      - name: vgi-lint
+        uses: Query-farm/vgi-lint-check@v1
+        with:
+          location: "bun run ${{ github.workspace }}/src/worker.ts"
+          fail-on: info
+          execute: "false"

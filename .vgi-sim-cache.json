@@ -1,0 +1,124 @@
+{
+  "1c090d0681f023ab": {
+    "name": "browse_content_collections",
+    "outcome": "fail",
+    "reason": "result differs from the reference solution",
+    "friction": [],
+    "queries": 1,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 2,
+      "queries": 1,
+      "bind_errors": 0,
+      "requirement_errors": 0,
+      "runtime_errors": 0,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 0,
+      "hit_ceiling": false,
+      "score": 100
+    },
+    "suggestions": [],
+    "attempts_used": 1
+  },
+  "251f06a8f98fbe93": {
+    "name": "save_drive_cursor",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: drive_items: attach an 'azure_graph' secret (TYPE azure_graph)\nError: drive_items: attach an 'azure_graph' secret (TYPE azure_graph)\n    at requireSecret (/Users/rusty/Development/vgi-azure-files/src/functions.ts:25:26)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/src/functions.ts:200:36)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (unknown)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-files/src/worker.ts]",
+    "friction": [
+      "The output columns _row_kind and _delta_next appear in DESCRIBE but not in the function's column docs, and _row_kind's allowed values (which one designates the marker row) are never enumerated -- I had to fall back on `_delta_next IS NOT NULL` to identify the marker.",
+      "describe_function lists `drive` in `parameters` alongside the named-only arguments, but it is actually positional; calling drive_items(drive := '...') fails with a confusing 'No function matches drive_items()' binder error.",
+      "describe_table on a table function returns 'no table main.drive_items -- call list_tables to see what exists', which implies the object does not exist rather than pointing at describe_function."
+    ],
+    "queries": 2,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 3,
+      "queries": 2,
+      "bind_errors": 1,
+      "requirement_errors": 0,
+      "runtime_errors": 0,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 1,
+      "hit_ceiling": false,
+      "score": 77
+    },
+    "suggestions": [
+      "Agent ran 1 query that failed to bind (unknown column/function/table) before solving \u2014 names or struct paths aren't discoverable; tighten per-object docs (VGI2xx/VGI3xx) or add a worked example.",
+      "Agent looked up an object that doesn't exist \u2014 the metadata implies a name that isn't there; align docs/examples with the real schema.",
+      "Analyst noted: The output columns _row_kind and _delta_next appear in DESCRIBE but not in the function's column docs, and _row_kind's allowed values (which one designates the marker row) are never enumerated -- I had to fall back on `_delta_next IS NOT NULL` to identify the marker.",
+      "Analyst noted: describe_function lists `drive` in `parameters` alongside the named-only arguments, but it is actually positional; calling drive_items(drive := '...') fails with a confusing 'No function matches drive_items()' binder error.",
+      "Analyst noted: describe_table on a table function returns 'no table main.drive_items -- call list_tables to see what exists', which implies the object does not exist rather than pointing at describe_function."
+    ],
+    "attempts_used": 1
+  },
+  "91947d27a758d095": {
+    "name": "list_drive_files",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: drive_items: attach an 'azure_graph' secret (TYPE azure_graph)\nError: drive_items: attach an 'azure_graph' secret (TYPE azure_graph)\n    at requireSecret (/Users/rusty/Development/vgi-azure-files/src/functions.ts:25:26)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/src/functions.ts:200:36)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:182:16)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-files/src/worker.ts]",
+    "friction": [
+      "describe_table does not work on table functions \u2014 it returns 'no table main.drive_items', with no hint to use describe_function instead. Discovering the output columns required DESCRIBE SELECT * FROM the function.",
+      "The `drive` argument is documented as 'REQUIRED. The Microsoft Graph drive id', which reads like a named parameter, but drive => '...' fails to bind: it is positional-only. The binder error is the only place that surfaces the real signature.",
+      "The describe_function doc_llm text was truncated mid-sentence in the tool output, cutting off the _row_kind semantics. Nothing in the untruncated portion states that data rows are _row_kind IS NULL and the cursor row is _row_kind = 'marker' \u2014 the single most important thing a caller needs to filter correctly.",
+      "The schema exposes no folder/file discriminator (no 'folder' or 'file' facet column), so this query returns folders alongside files. The task asks for files specifically; that distinction is not expressible with the columns the catalog exposes."
+    ],
+    "queries": 3,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 3,
+      "queries": 3,
+      "bind_errors": 1,
+      "requirement_errors": 0,
+      "runtime_errors": 0,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 1,
+      "hit_ceiling": false,
+      "score": 77
+    },
+    "suggestions": [
+      "Agent ran 1 query that failed to bind (unknown column/function/table) before solving \u2014 names or struct paths aren't discoverable; tighten per-object docs (VGI2xx/VGI3xx) or add a worked example.",
+      "Agent looked up an object that doesn't exist \u2014 the metadata implies a name that isn't there; align docs/examples with the real schema.",
+      "Analyst noted: describe_table does not work on table functions \u2014 it returns 'no table main.drive_items', with no hint to use describe_function instead. Discovering the output columns required DESCRIBE SELECT * FROM the function.",
+      "Analyst noted: The `drive` argument is documented as 'REQUIRED. The Microsoft Graph drive id', which reads like a named parameter, but drive => '...' fails to bind: it is positional-only. The binder error is the only place that surfaces the real signature.",
+      "Analyst noted: The describe_function doc_llm text was truncated mid-sentence in the tool output, cutting off the _row_kind semantics. Nothing in the untruncated portion states that data rows are _row_kind IS NULL and the cursor row is _row_kind = 'marker' \u2014 the single most important thing a caller needs to filter correctly.",
+      "Analyst noted: The schema exposes no folder/file discriminator (no 'folder' or 'file' facet column), so this query returns folders alongside files. The task asks for files specifically; that distinction is not expressible with the columns the catalog exposes."
+    ],
+    "attempts_used": 1
+  },
+  "7bfd205b234b574e": {
+    "name": "incremental_list_changes",
+    "outcome": "fail",
+    "reason": "reference_sql failed: Invalid Input Error: VGI Worker Exception: Error: sharepoint_list_items: attach an 'azure_graph' secret (TYPE azure_graph)\nError: sharepoint_list_items: attach an 'azure_graph' secret (TYPE azure_graph)\n    at requireSecret (/Users/rusty/Development/vgi-azure-files/src/functions.ts:25:26)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/src/functions.ts:324:36)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/functions/table.ts:482:24)\n    at <anonymous> (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi/src/protocol/handlers/function.ts:208:24)\n    at async dispatchStream (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/dispatch/stream.ts:157:22)\n    at async serveOne (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:357:15)\n    at async serveConnection (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:214:20)\n    at async run (/Users/rusty/Development/vgi-azure-files/node_modules/@query-farm/vgi-rpc/src/server.ts:182:16)\n    at processTicksAndRejections (native:7:39) [worker: bun run /Users/rusty/Development/vgi-azure-files/src/worker.ts]",
+    "friction": [
+      "`describe_table` fails on the delta table functions ('no table main.sharepoint_list_items'), even though the orientation listing and list_tables both label them as tables. Discovering the output columns required a `DESCRIBE SELECT` against the function, which in turn needed the arguments to be passed correctly first \u2014 a chicken-and-egg step.",
+      "The `describe_function` output advertises `parameters: [site, list, page_size, expand, delta_token]` without indicating that `site` and `list` are positional-only. Passing them as named arguments (`site => ...`) raises a confusing 'No function matches ... sharepoint_list_items()' binder error that names zero of the supplied arguments.",
+      "The `_row_kind` column is undocumented: neither the schema comment, the function description, nor `doc_llm` says what its values are or how it distinguishes data rows from the trailing marker row. I had to fall back on the documented `_delta_next IS NOT NULL` property to identify the cursor row. Per-column comments exist for the `content_collections` view but not for the table functions' result columns.",
+      "The function's result columns cannot be introspected against live data without an `azure_graph` secret, and the error surfaces as a raw JS stack trace through several node_modules frames rather than a clean 'missing credential' message."
+    ],
+    "queries": 3,
+    "grader": "reference",
+    "path": {
+      "discovery_calls": 4,
+      "queries": 3,
+      "bind_errors": 1,
+      "requirement_errors": 0,
+      "runtime_errors": 1,
+      "blocked": 0,
+      "redundant_describes": 0,
+      "not_found": 1,
+      "hit_ceiling": false,
+      "score": 69
+    },
+    "suggestions": [
+      "Agent ran 1 query that failed to bind (unknown column/function/table) before solving \u2014 names or struct paths aren't discoverable; tighten per-object docs (VGI2xx/VGI3xx) or add a worked example.",
+      "Agent looked up an object that doesn't exist \u2014 the metadata implies a name that isn't there; align docs/examples with the real schema.",
+      "Analyst noted: `describe_table` fails on the delta table functions ('no table main.sharepoint_list_items'), even though the orientation listing and list_tables both label them as tables. Discovering the output columns required a `DESCRIBE SELECT` against the function, which in turn needed the arguments to be passed correctly first \u2014 a chicken-and-egg step.",
+      "Analyst noted: The `describe_function` output advertises `parameters: [site, list, page_size, expand, delta_token]` without indicating that `site` and `list` are positional-only. Passing them as named arguments (`site => ...`) raises a confusing 'No function matches ... sharepoint_list_items()' binder error that names zero of the supplied arguments.",
+      "Analyst noted: The `_row_kind` column is undocumented: neither the schema comment, the function description, nor `doc_llm` says what its values are or how it distinguishes data rows from the trailing marker row. I had to fall back on the documented `_delta_next IS NOT NULL` property to identify the cursor row. Per-column comments exist for the `content_collections` view but not for the table functions' result columns.",
+      "Analyst noted: The function's result columns cannot be introspected against live data without an `azure_graph` secret, and the error surfaces as a raw JS stack trace through several node_modules frames rather than a clean 'missing credential' message."
+    ],
+    "attempts_used": 1
+  }
+}
