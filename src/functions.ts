@@ -69,14 +69,14 @@ function columnsTable(cols: ResultColumn[]): string {
 }
 
 // ---------------------------------------------------------------------------
-// drive_items(drive, delta_token?, select?, page_size?, include_download_url?)
+// drive_items(drive, delta_token?, select_fields?, page_size?, include_download_url?)
 // ---------------------------------------------------------------------------
 
 interface DriveArgs {
   drive: string;
   /** Full opaque @odata.deltaLink from last scan, or "" for a full sync. */
   delta_token: string;
-  select: string;
+  select_fields: string;
   page_size: number; // Int64 args arrive coerced to number by the SDK
   include_download_url: boolean; // SECURITY: opt-in only (SPEC §4a)
 }
@@ -97,13 +97,13 @@ export function makeDriveItems(clientFactory: ClientFactory) {
     args: {
       drive: new Utf8(),
       delta_token: new Utf8(),
-      select: new Utf8(),
+      select_fields: new Utf8(),
       page_size: new Int64(),
       include_download_url: new Bool(),
     },
     argDefaults: {
       delta_token: "",
-      select: DEFAULT_ITEM_SELECT,
+      select_fields: DEFAULT_ITEM_SELECT,
       page_size: DEFAULT_PAGE_SIZE,
       include_download_url: false,
     },
@@ -111,8 +111,8 @@ export function makeDriveItems(clientFactory: ClientFactory) {
       drive: "REQUIRED. The Microsoft Graph drive id of the OneDrive / SharePoint document library to scan (the `driveId`).",
       delta_token:
         "A previously persisted `@odata.deltaLink` (the `_delta_next` value from a prior scan's marker row for THIS drive), replayed verbatim to return only what changed since. Empty (the default) performs a full sync.",
-      select:
-        "Comma-separated Microsoft Graph `$select` projection of driveItem fields to fetch on the initial full sync. Pinned for the life of a delta token (baked into the server's deltaLink). Defaults to `id,name,size,webUrl,lastModifiedDateTime`.",
+      select_fields:
+        "Comma-separated Microsoft Graph `$select` projection of driveItem fields to fetch on the initial full sync. Pinned for the life of a delta token (baked into the server's deltaLink). Defaults to `id,name,size,webUrl,lastModifiedDateTime`. (Named `select_fields` rather than `select` because `select` is a reserved SQL keyword and cannot be used bare as a named argument.)",
       page_size:
         "Best-effort Microsoft Graph `$top` page size for the initial full sync (Graph may not honor it). Defaults to 200.",
       include_download_url:
@@ -166,7 +166,28 @@ export function makeDriveItems(clientFactory: ClientFactory) {
         "Microsoft Graph's `drives/{drive}/root/delta` query. `drive` is required. Read data rows with " +
         "`WHERE _row_kind IS NULL`; take the next cursor from the marker row's `_delta_next` and persist " +
         "it per drive. Set `include_download_url := true` to add a short-lived download capability URL " +
-        "column. See the examples for runnable full-sync, incremental, and download-URL queries.",
+        "column.",
+      // Described example queries (VGI515). The native duckdb_functions().examples carrier
+      // drops descriptions, so mirror the examples[] here as byte-identical {description,sql}
+      // JSON so callers (and the linter) see a human-readable description for each.
+      "vgi.example_queries": JSON.stringify([
+        {
+          description: "Full sync of a document library's files (data rows only)",
+          sql: "SELECT id, name, size, web_url FROM azure.main.drive_items('<driveId>') WHERE _row_kind IS NULL",
+        },
+        {
+          description: "Incremental sync replaying a previously saved delta cursor for this drive",
+          sql: "SELECT id, change_type, name FROM azure.main.drive_items('<driveId>', delta_token := '<@odata.deltaLink>')",
+        },
+        {
+          description: "Fetch files with the opt-in short-lived download capability URL",
+          sql: "SELECT id, name, _download_url FROM azure.main.drive_items('<driveId>', include_download_url := true) WHERE _row_kind IS NULL AND change_type = 'upsert'",
+        },
+        {
+          description: "Read the delta cursor to persist for this drive's next sync",
+          sql: "SELECT _delta_next FROM azure.main.drive_items('<driveId>') WHERE _row_kind = 'marker'",
+        },
+      ]),
       // Dynamic: the column set varies by include_download_url, so one variant table per
       // shape (VGI307 dynamic branch / VGI326).
       "vgi.result_dynamic_columns_md":
@@ -190,7 +211,7 @@ export function makeDriveItems(clientFactory: ClientFactory) {
       // the server's link (SPEC §2a).
       startUrl: p.args.delta_token
         ? p.args.delta_token
-        : driveItemsStartUrl(p.args.drive, p.args.select, Number(p.args.page_size) || DEFAULT_PAGE_SIZE),
+        : driveItemsStartUrl(p.args.drive, p.args.select_fields, Number(p.args.page_size) || DEFAULT_PAGE_SIZE),
     }),
     process: async (p, state: DriveState, out: OutputCollector) => {
       if (state.done) {
@@ -300,7 +321,23 @@ export function makeListItems(clientFactory: ClientFactory) {
         "`sites/{site}/lists/{list}/items/delta` query. `site` and `list` are required. `$expand=fields` " +
         "(the default) materializes the list's user-defined columns — the item Title surfaces as `name`. " +
         "Read data rows with `WHERE _row_kind IS NULL`; take the next cursor from the marker row's " +
-        "`_delta_next` and persist it per list. See the examples for runnable full-sync and incremental queries.",
+        "`_delta_next` and persist it per list.",
+      // Described example queries (VGI515) — mirror examples[] with descriptions the native
+      // duckdb_functions().examples carrier drops.
+      "vgi.example_queries": JSON.stringify([
+        {
+          description: "Full sync of a SharePoint list's items (data rows only)",
+          sql: "SELECT id, name, web_url, last_modified_date_time FROM azure.main.sharepoint_list_items('<siteId>', '<listId>') WHERE _row_kind IS NULL",
+        },
+        {
+          description: "Incremental sync replaying a previously saved delta cursor for this list",
+          sql: "SELECT id, change_type, name FROM azure.main.sharepoint_list_items('<siteId>', '<listId>', delta_token := '<@odata.deltaLink>')",
+        },
+        {
+          description: "Read the delta cursor to persist for this list's next sync",
+          sql: "SELECT _delta_next FROM azure.main.sharepoint_list_items('<siteId>', '<listId>') WHERE _row_kind = 'marker'",
+        },
+      ]),
       // Static: sharepoint_list_items never emits _download_url, so the schema is fixed (VGI307 static).
       "vgi.result_columns_schema": JSON.stringify([...BUSINESS_RESULT_COLUMNS, ...CONTROL_RESULT_COLUMNS]),
     },
