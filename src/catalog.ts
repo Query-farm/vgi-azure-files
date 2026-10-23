@@ -9,7 +9,8 @@
 // strings; every example SQL is catalog-qualified (azure.main.<fn>) so it binds when the
 // catalog is attached. The content functions require an `azure_graph` secret + a network
 // call to RUN, so the executable examples are credential-free `LIMIT 0` bind probes and
-// the agent-test tasks are graded by success_criteria (credential-gated / non-deterministic).
+// the agent-test tasks are graded from the vgi-agent-tests.yaml sidecar (credential-gated /
+// non-deterministic).
 
 import { Schema, Field, Utf8 } from "@query-farm/apache-arrow";
 import type { CatalogDescriptor, SecretTypeDescriptor, ViewDescriptor, VgiFunction } from "@query-farm/vgi";
@@ -105,46 +106,27 @@ const CATALOG_TAGS: Record<string, string> = {
   ]),
   // The agent-suitability suite (VGI152/VGI520/VGI920), catalog only. Every worker object
   // (both delta functions + the browsable content_collections view) is exercised by exactly
-  // one task. `reference_sql` is the canonical fully-qualified solution (grader-only): it
-  // drives static coverage (VGI520) and, when the sim runs authenticated, reference grading.
-  // `success_criteria` is the LLM-judge rubric used when the sim runs unauthenticated — a
-  // live content scan needs an azure_graph secret and returns tenant-specific, non-
-  // deterministic data, so an exact-compare reference can only be graded with real
-  // credentials. Neither reference_sql nor success_criteria is ever shown to the analyst.
+  // one task. Only each task's name + prompt is published here (VGI416); the grader fields
+  // (reference_sql / success_criteria) live in the private sidecar vgi-agent-tests.yaml,
+  // keyed by task name, and are never shown to the analyst.
   "vgi.agent_test_tasks": JSON.stringify([
     {
       name: "list_drive_files",
       prompt:
         "List the files in the OneDrive / SharePoint document library with drive id '<driveId>', showing each file's name and size.",
-      reference_sql:
-        "SELECT name, size FROM azure.main.drive_items('<driveId>') WHERE _row_kind IS NULL ORDER BY name",
-      success_criteria:
-        "The answer queries drive_items('<driveId>') (the required drive id is passed positionally), filters to data rows (_row_kind IS NULL), and returns name and size (bytes).",
     },
     {
       name: "save_drive_cursor",
       prompt: "After scanning a drive with drive_items, how do I get the cursor to use for the next incremental sync?",
-      reference_sql:
-        "SELECT _delta_next FROM azure.main.drive_items('<driveId>') WHERE _row_kind = 'marker'",
-      success_criteria:
-        "The answer selects _delta_next from the marker row (_row_kind = 'marker') of drive_items() and explains it should be persisted per drive and replayed via the delta_token argument.",
     },
     {
       name: "incremental_list_changes",
       prompt:
         "Using a previously saved delta cursor, fetch only the SharePoint list items in site '<siteId>' list '<listId>' that changed since the last scan, including which ones were removed.",
-      reference_sql:
-        "SELECT id, change_type, name FROM azure.main.sharepoint_list_items('<siteId>', '<listId>', delta_token := '<@odata.deltaLink>')",
-      success_criteria:
-        "The answer queries sharepoint_list_items('<siteId>', '<listId>', delta_token := '<link>') (site and list ids passed positionally), filters to data rows (_row_kind IS NULL), and distinguishes change_type 'upsert' from 'removed'.",
     },
     {
       name: "browse_content_collections",
       prompt: "What kinds of Microsoft 365 content can I sync with this catalog, and which table function serves each?",
-      reference_sql:
-        "SELECT collection, table_function FROM azure.main.content_collections ORDER BY collection",
-      success_criteria:
-        "The answer reads content_collections (the browsable, credential-free discovery view) and lists the content kinds (document-library drive items, SharePoint list items) alongside the table function that serves each.",
     },
   ]),
 };

@@ -1,0 +1,44 @@
+# Private grader sidecar for `vgi-lint simulate` (and `lint`'s VGI520 coverage). The worker
+# publishes only task names + prompts in `vgi.agent_test_tasks` (src/catalog.ts); these
+# grader fields are keyed by that name and never sent to the analyst agent.
+#
+# `reference_sql` is the canonical fully-qualified solution: it drives static coverage
+# (VGI520) and authenticated reference grading. `success_criteria` is the LLM-judge rubric
+# used when the sim runs unauthenticated (a live drive / list scan needs an azure_graph secret
+# and returns tenant-specific data, so an exact-compare reference can only be graded with
+# real credentials).
+tasks:
+  - name: list_drive_files
+    reference_sql: >-
+      SELECT name, size FROM azure.main.drive_items('<driveId>') WHERE _row_kind IS NULL ORDER
+      BY name
+    success_criteria: >-
+      The answer queries drive_items('<driveId>') (the required drive id is passed
+      positionally), filters to data rows (_row_kind IS NULL), and returns name and size
+      (bytes).
+
+  - name: save_drive_cursor
+    reference_sql: >-
+      SELECT _delta_next FROM azure.main.drive_items('<driveId>') WHERE _row_kind = 'marker'
+    success_criteria: >-
+      The answer selects _delta_next from the marker row (_row_kind = 'marker') of
+      drive_items() and explains it should be persisted per drive and replayed via the
+      delta_token argument.
+
+  - name: incremental_list_changes
+    reference_sql: >-
+      SELECT id, change_type, name FROM azure.main.sharepoint_list_items('<siteId>',
+      '<listId>', delta_token := '<@odata.deltaLink>')
+    success_criteria: >-
+      The answer queries sharepoint_list_items('<siteId>', '<listId>', delta_token :=
+      '<link>') (site and list ids passed positionally), filters to data rows (_row_kind IS
+      NULL), and distinguishes change_type 'upsert' from 'removed'.
+
+  - name: browse_content_collections
+    reference_sql: >-
+      SELECT collection, table_function FROM azure.main.content_collections ORDER BY
+      collection
+    success_criteria: >-
+      The answer reads content_collections (the browsable, credential-free discovery view) and
+      lists the content kinds (document-library drive items, SharePoint list items) alongside
+      the table function that serves each.
