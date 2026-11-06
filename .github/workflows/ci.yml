@@ -34,8 +34,8 @@ jobs:
   # Entra client credentials) and a network call to Microsoft Graph to return rows, so the
   # VGI9xx live-scan rules (VGI911 scan-responds, VGI901 example execution) and the VGI920
   # agent simulation cannot run without tenant credentials. The LIMIT-0 executable examples
-  # and the structured result schemas cover the static surface. The action tag @v1 resolves
-  # the latest published vgi-lint-check (unpinned).
+  # and the structured result schemas cover the static surface. The action tag @v2 resolves
+  # the latest vgi-lint-check 2.x (haybarn 2.0, vgi.v3).
   lint:
     name: metadata quality (vgi-lint)
     runs-on: ubuntu-latest
@@ -45,7 +45,7 @@ jobs:
       - name: Install worker dependencies
         run: bun install --frozen-lockfile
       - name: vgi-lint
-        uses: Query-farm/vgi-lint-check@v1
+        uses: Query-farm/vgi-lint-check@v2
         with:
           location: "bun run ${{ github.workspace }}/src/worker.ts"
           fail-on: info
