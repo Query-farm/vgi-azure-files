@@ -54,7 +54,7 @@ const catalogInterface = new ReadOnlyCatalogInterface(makeCatalog(functions), re
 serveVgiWorker({
   name: "azure",
   doc: "Microsoft 365 content — OneDrive / SharePoint driveItems and SharePoint listItems — as incremental delta table functions over Microsoft Graph.",
-  version: "0.2.0",
+  version: "0.2.1",
   repositoryUrl: "https://github.com/Query-farm/vgi-azure-files",
   serverId: "vgi-azure-files",
   registry,
