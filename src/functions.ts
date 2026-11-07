@@ -90,6 +90,9 @@ interface DriveState {
 export function makeDriveItems(clientFactory: ClientFactory) {
   return defineTableFunction<DriveArgs, DriveState>({
     name: "drive_items",
+    // Request the azure_graph secret at bind so the connector delivers it (a
+    // missing secret resolves to nothing, so credential-free LIMIT 0 binds still work).
+    requiredSecrets: ["azure_graph"],
     description:
       "OneDrive / SharePoint document-library driveItems via Microsoft Graph per-drive delta " +
       "(incremental change feed with removals). One delta_token per drive; the {drive -> deltaLink} " +
@@ -253,6 +256,9 @@ interface ListState {
 export function makeListItems(clientFactory: ClientFactory) {
   return defineTableFunction<ListArgs, ListState>({
     name: "sharepoint_list_items",
+    // Request the azure_graph secret at bind so the connector delivers it (a
+    // missing secret resolves to nothing, so credential-free LIMIT 0 binds still work).
+    requiredSecrets: ["azure_graph"],
     description:
       "SharePoint listItems via Microsoft Graph per-list delta (incremental change feed with " +
       "removals; $expand=fields materializes user-defined columns). One delta_token per (site,list); " +
