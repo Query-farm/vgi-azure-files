@@ -31,6 +31,8 @@ export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
 const CATALOG_TAGS: Record<string, string> = {
   "vgi.title": "Microsoft 365 Content Delta",
+  "vgi.subtitle":
+    "Incremental change feeds of SharePoint and OneDrive files and SharePoint list items via Microsoft Graph.",
   "vgi.doc_llm":
     "Microsoft 365 file/content objects as SQL delta table functions over Microsoft Graph. Reach for " +
     "it to sync a SharePoint / OneDrive document library or a SharePoint list as an incremental change " +
