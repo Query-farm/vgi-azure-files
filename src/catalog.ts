@@ -21,11 +21,34 @@ const ISSUES = `${REPO}/issues`;
 export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
   name: "azure_graph",
   description: "Microsoft Entra app-only (client-credentials) credentials for Microsoft Graph",
-  schema: new Schema([
-    new Field("tenant_id", new Utf8(), true),
-    new Field("client_id", new Utf8(), true),
-    new Field("client_secret", new Utf8(), true, new Map([["redact", "true"]])),
-  ]),
+  // vgi_doc (per parameter) and vgi_doc_url (schema) document where each credential
+  // comes from (vgi-lint VGI1011 / VGI1012).
+  schema: new Schema(
+    [
+      new Field(
+        "tenant_id",
+        new Utf8(),
+        true,
+        new Map([["vgi_doc", "Directory (tenant) ID of the Microsoft Entra tenant, from the app registration's Overview page"]]),
+      ),
+      new Field(
+        "client_id",
+        new Utf8(),
+        true,
+        new Map([["vgi_doc", "Application (client) ID of the Microsoft Entra app registration, from its Overview page"]]),
+      ),
+      new Field(
+        "client_secret",
+        new Utf8(),
+        true,
+        new Map([
+          ["redact", "true"],
+          ["vgi_doc", "Client secret value created under the app registration's Certificates & secrets page (shown once, at creation)"],
+        ]),
+      ),
+    ],
+    new Map([["vgi_doc_url", "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app"]]),
+  ),
 };
 
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
@@ -46,13 +69,11 @@ const CATALOG_TAGS: Record<string, string> = {
     "queried (e.g. Sites.Selected, Sites.Read.All, or Files.Read.All).",
   "vgi.doc_md":
     "## Microsoft 365 Content Delta\n\n" +
-    "Incremental (delta) access to Microsoft 365 content via Microsoft Graph, exposed as two DuckDB " +
-    "table functions.\n\n" +
-    "- **`drive_items`** — OneDrive / SharePoint document-library `driveItems` as a per-drive " +
-    "incremental change feed (with removals); optional opt-in `_download_url` capability column.\n" +
-    "- **`sharepoint_list_items`** — SharePoint `listItems` as a per-list incremental change feed (with " +
-    "removals); `$expand=fields` materializes user-defined columns.\n\n" +
-    "Each function returns changed items plus a single marker row (`_row_kind = 'marker'`) whose " +
+    "Incremental (delta) access to Microsoft 365 content via Microsoft Graph: OneDrive / SharePoint " +
+    "document-library files and folders as a per-drive change feed (with removals and an opt-in, " +
+    "short-lived download capability column), and SharePoint list items as a per-list change feed " +
+    "(with removals; `$expand=fields` materializes user-defined columns).\n\n" +
+    "Each feed returns changed items plus a single marker row (`_row_kind = 'marker'`) whose " +
     "`_delta_next` column holds the verbatim `@odata.deltaLink` to persist and replay on the next " +
     "scan. Call with no `delta_token` for a full sync; pass `delta_token := '<link>'` for an " +
     "incremental sync. Each invocation is a single-resource cursor atom — the caller holds the " +
@@ -146,12 +167,11 @@ const SCHEMA_TAGS: Record<string, string> = {
     "call is a single-resource cursor atom — the {resourceId -> deltaLink} map is held by the caller.",
   "vgi.doc_md":
     "## Microsoft 365 content delta functions\n\n" +
-    "| Function | Resource | Returns |\n" +
-    "| --- | --- | --- |\n" +
-    "| `drive_items` | OneDrive / SharePoint document library | changed driveItems + delta cursor |\n" +
-    "| `sharepoint_list_items` | SharePoint list | changed listItems + delta cursor |\n\n" +
+    "Delta table functions over two kinds of Microsoft 365 resource — a OneDrive / SharePoint " +
+    "document library's driveItems and a SharePoint list's listItems — each returning the changed " +
+    "items plus a delta cursor.\n\n" +
     "Both share the same shape: read data rows with `WHERE _row_kind IS NULL`, and take the next " +
-    "cursor from the single marker row's `_delta_next`. `drive_items` can additionally opt into a " +
+    "cursor from the single marker row's `_delta_next`. The document-library feed can additionally opt into a " +
     "short-lived `_download_url` capability column via `include_download_url := true`. Each requires " +
     "an app-only `azure_graph` secret.",
   "vgi.keywords": JSON.stringify([
