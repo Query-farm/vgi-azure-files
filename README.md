@@ -2,6 +2,11 @@
 
 A [VGI](https://query.farm) worker (**Microsoft 365 Content Delta**) for DuckDB. Microsoft 365 content as incremental (delta) DuckDB table functions over Microsoft Graph: `drive_items` (OneDrive / SharePoint document-library items, with an opt-in `_download_url` column) and `sharepoint_list_items` (SharePoint list items with their user-defined fields). Each scan returns the items created/updated or removed since the last cursor plus a single marker row (`_row_kind = 'marker'`) whose `_delta_next` holds the `@odata.deltaLink` to persist. Each call covers one drive or list; the caller keeps the `{resourceId -> deltaLink}` map. Call with no `delta_token` for a full sync. A credential-free `content_collections` view is also exposed.
 
+## Executed notebooks
+
+[Build the current file inventory](notebooks/README.md) follows a synthetic paged
+full scan and delta update through the real worker, with SQL checks and size charts.
+
 ## Quick start
 
 Every [GitHub release](https://github.com/Query-farm/vgi-azure-files/releases) ships a prebuilt worker binary. The `vgi` extension downloads the one for your platform, checks its SHA-256 and caches it, so there is nothing to install besides DuckDB:
