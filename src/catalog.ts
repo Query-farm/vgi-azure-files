@@ -51,6 +51,17 @@ export const AZURE_GRAPH_SECRET: SecretTypeDescriptor = {
   ),
 };
 
+// Upstream references rendered into the catalog docs (VGI183: link out to the service, API
+// docs and app-registration/permission docs this worker actually calls).
+const SOURCES_MD =
+  "### Sources and references\n\n" +
+  "- [driveItem: delta](https://learn.microsoft.com/en-us/graph/api/driveitem-delta) — the OneDrive / SharePoint drive change feed\n" +
+  "- [listItem: delta](https://learn.microsoft.com/en-us/graph/api/listitem-delta) — the SharePoint list-item change feed\n" +
+  "- [Selected permissions (Sites.Selected)](https://learn.microsoft.com/en-us/graph/permissions-selected-overview) — the least-privilege per-site grant\n" +
+  "- [Register an app](https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app) — create the app-only client credentials for the `azure_graph` secret";
+const SOURCES_LLM =
+  " Upstream Microsoft docs: driveItem: delta https://learn.microsoft.com/en-us/graph/api/driveitem-delta; listItem: delta https://learn.microsoft.com/en-us/graph/api/listitem-delta; Selected permissions (Sites.Selected) https://learn.microsoft.com/en-us/graph/permissions-selected-overview; Register an app https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app.";
+
 /** Catalog-level tags: docs, discovery, provenance, and the agent-test suite. */
 const CATALOG_TAGS: Record<string, string> = {
   "vgi.title": "Microsoft 365 Content Delta",
@@ -66,7 +77,7 @@ const CATALOG_TAGS: Record<string, string> = {
     "fleet. A first call with no delta_token performs a full sync; passing a previously saved " +
     "delta_token returns only what changed. Requires an app-only (client-credentials) 'azure_graph' " +
     "secret (tenant_id, client_id, client_secret) with Graph read permission for the resources being " +
-    "queried (e.g. Sites.Selected, Sites.Read.All, or Files.Read.All).",
+    "queried (e.g. Sites.Selected, Sites.Read.All, or Files.Read.All)." + SOURCES_LLM,
   "vgi.doc_md":
     "## Microsoft 365 Content Delta\n\n" +
     "Incremental (delta) access to Microsoft 365 content via Microsoft Graph: OneDrive / SharePoint " +
@@ -78,7 +89,7 @@ const CATALOG_TAGS: Record<string, string> = {
     "scan. Call with no `delta_token` for a full sync; pass `delta_token := '<link>'` for an " +
     "incremental sync. Each invocation is a single-resource cursor atom — the caller holds the " +
     "`{resourceId -> deltaLink}` map. An app-only `azure_graph` secret (Microsoft Entra client " +
-    "credentials) is required.",
+    "credentials) is required.\n\n" + SOURCES_MD,
   "vgi.keywords": JSON.stringify([
     "azure",
     "microsoft 365",
