@@ -1,0 +1,68 @@
+# name: test/sql/offline.test
+# description: vgi-azure-files without credentials or network: ATTACH, the advertised functions
+# and tables, and every catalog executable example (credential-free bind probes and
+# static manifests). Runs over every transport; the live Azure scans need an azure_graph
+# secret and are not exercised here.
+# group: [sql]
+
+require-env VGI_TEST_WORKER
+
+# Transport failures must fail the suite rather than silently skip it.
+set ignore_error_messages
+
+statement ok
+ATTACH 'azure' AS azure (TYPE vgi, LOCATION '{VGI_TEST_WORKER}');
+
+query TT
+SELECT DISTINCT schema_name, function_name FROM duckdb_functions() WHERE database_name = 'azure' ORDER BY ALL;
+----
+main	drive_items
+main	sharepoint_list_items
+
+query TT
+SELECT schema_name, table_name FROM duckdb_tables() WHERE database_name = 'azure'
+UNION ALL SELECT schema_name, view_name FROM duckdb_views() WHERE database_name = 'azure' ORDER BY ALL;
+----
+main	content_collections
+
+# drive_items_bind_probe: Bind drive_items and expose its default result columns (credential-free; the 'drive' placeholder satisfies onBind, LIMIT 0 skips the network. Supply a real driveId and attach an azure_graph secret to sync).
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, name, size, web_url, last_modified_date_time FROM azure.main.drive_items('placeholder-drive-id') LIMIT 0);
+----
+id	VARCHAR
+name	VARCHAR
+size	BIGINT
+web_url	VARCHAR
+last_modified_date_time	VARCHAR
+
+query I
+SELECT count(*) FROM (SELECT id, name, size, web_url, last_modified_date_time FROM azure.main.drive_items('placeholder-drive-id') LIMIT 0);
+----
+0
+
+# drive_items_download_url_bind_probe: Bind drive_items with include_download_url := true to expose the opt-in _download_url capability column (credential-free; LIMIT 0 skips the network).
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, name, _download_url FROM azure.main.drive_items('placeholder-drive-id', include_download_url := true) LIMIT 0);
+----
+id	VARCHAR
+name	VARCHAR
+_download_url	VARCHAR
+
+query I
+SELECT count(*) FROM (SELECT id, name, _download_url FROM azure.main.drive_items('placeholder-drive-id', include_download_url := true) LIMIT 0);
+----
+0
+
+# sharepoint_list_items_bind_probe: Bind sharepoint_list_items and expose its result columns (credential-free; the 'site'/'list' placeholders satisfy onBind, LIMIT 0 skips the network. Supply real siteId/listId and attach an azure_graph secret to sync).
+query TT
+SELECT column_name, column_type FROM (DESCRIBE SELECT id, name, web_url, last_modified_date_time FROM azure.main.sharepoint_list_items('placeholder-site-id', 'placeholder-list-id') LIMIT 0);
+----
+id	VARCHAR
+name	VARCHAR
+web_url	VARCHAR
+last_modified_date_time	VARCHAR
+
+query I
+SELECT count(*) FROM (SELECT id, name, web_url, last_modified_date_time FROM azure.main.sharepoint_list_items('placeholder-site-id', 'placeholder-list-id') LIMIT 0);
+----
+0
